@@ -32,9 +32,13 @@ def getAPI():
                       access_token_secret=access_token_secret)
     return api
 
-def getTweets(account='BBCNews', count=10):
-    t = api.GetUserTimeline(screen_name=account, count=count)
-    tweets = [i.AsDict() for i in t]
+def getTweets(account='BBCNews', count=200):
+    tweets = []
+    fetches = 1
+    for i in range(fetches):
+        t = api.GetUserTimeline(screen_name=account, since_id=old_id, count=count, include_rts=1)
+        new_tweets = [i.AsDict() for i in t]
+        tweets += new_tweets
     return tweets
 
 def saveTweets(tweets_list):
@@ -48,18 +52,33 @@ def loadTweets():
 def getFavourites(tweet):
     if 'favorite_count' in tweet:
         return int(tweet['favorite_count'])
-    else:
+    elif 'retweeted_status' in tweet:
+        # Try retweeted tweet
         return getFavourites(tweet['retweeted_status'])
+    else:
+        return None
+
+def getUrl(tweet):
+    if len(tweet['urls']) > 0:
+        return tweet['urls'][0]['url']
+    elif 'retweeted_status' in tweet:
+        # Try retweeted tweet
+        return getUrl(tweet['retweeted_status'])
+    else:
+        return None
 
 def formatTweetText(tweet_txt):
-    return re.sub(r'https.*', '', tweet_txt)
+    result = tweet_txt
+    result = re.sub(r' https.*', '', result)
+    result = re.sub(r'\n.*', '', result)
+    result = re.sub(r'^RT @.*: ', '', result)
+    result += '.'
+    return result
 
 def createDataFrame(tweets):
     df = pd.DataFrame()
 
     for i, tweet in enumerate(tweets):
-        print("TWEET", i)
-        #pprint.pprint(tweet)
         
         # Create datetime object
         date = datetime.strptime(tweet['created_at'], "%a %b %d %X %z %Y")
@@ -67,18 +86,22 @@ def createDataFrame(tweets):
         formatted_time = date.strftime("%X")
         
         no_favourites = getFavourites(tweet)
+        url = getUrl(tweet)
         tweet_txt = formatTweetText(tweet['text'])
     
-    df = df.append({'Date': formatted_date, 'Time': formatted_time, 'Tweet': tweet_txt, 'Favourites': no_favourites, 'Retweets': tweet['retweet_count']}, ignore_index=True)
+        df = df.append({'Date': formatted_date, 'Time': formatted_time, 'Tweet': tweet_txt, 'Favourites': no_favourites, 'Retweets': tweet['retweet_count'], 'Url': url}, ignore_index=True)
 
     df.sort_values(by=['Favourites'], ascending=False, ignore_index=True, inplace=True)
 
     return df
 
-#api = getAPI()
-#tweets = getTweets(count=100)
-#saveTweets(tweets)
+
+api = getAPI()
+tweets = getTweets(count=500)
+saveTweets(tweets)
+
 tweets = loadTweets()
 print(len(tweets))
 
 df = createDataFrame(tweets)
+print(df)
