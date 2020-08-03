@@ -84,7 +84,6 @@ def formatTweetText(tweet_txt):
     result = re.sub(r' https.*', '', result)
     result = re.sub(r'\n.*', '', result)
     result = re.sub(r'^RT @.*: ', '', result)
-    result += '.'
     return result
 
 def createDataFrame(tweets):
