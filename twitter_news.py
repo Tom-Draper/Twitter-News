@@ -40,7 +40,8 @@ def getTweets(account='BBCNews', count=200, no_fetches=1):
         new_tweets = [i.AsDict() for i in t]
         old_id = new_tweets[-1]['id']
         tweets += new_tweets
-    print(len(tweets), "tweets")
+    if len(tweets) != count*no_fetches:
+        print("Error:", len(tweets), "tweets")
     return tweets
 
 def saveTweets(tweets_list):
@@ -57,6 +58,15 @@ def getFavourites(tweet):
     elif 'retweeted_status' in tweet:
         # Try retweeted tweet
         return getFavourites(tweet['retweeted_status'])
+    else:
+        return None
+
+def getAccountName(tweet):
+    """Get the account name of the original poster."""
+    if 'retweeted_status' in tweet:
+        return getAccountName(tweet['retweeted_status'])
+    elif 'user' in tweet:
+        return tweet['user']['name']
     else:
         return None
 
@@ -80,12 +90,13 @@ def formatTweetText(tweet_txt):
 def createDataFrame(tweets):
     df = pd.DataFrame()
 
-    for i, tweet in enumerate(tweets):
+    for tweet in tweets:
         # Create datetime object
         date = datetime.strptime(tweet['created_at'], "%a %b %d %X %z %Y")
         formatted_date = date.strftime("%d-%m-%Y")
         formatted_time = date.strftime("%X")
         
+        account_name = getAccountName(tweet)
         no_favourites = getFavourites(tweet)
         url = getUrl(tweet)
         tweet_txt = formatTweetText(tweet['text'])
@@ -93,19 +104,18 @@ def createDataFrame(tweets):
         # Filter tweets older than a week
         week_ago = datetime.now() - timedelta(days=7)
         if date.replace(tzinfo=None) > week_ago:
-            df = df.append({'Account': tweet['user']['name'], 'Date': formatted_date, 'Time': formatted_time, 'Tweet': tweet_txt, 'Favourites': no_favourites, 'Retweets': tweet['retweet_count'], 'Url': url}, ignore_index=True)
+            df = df.append({'Account': account_name, 'Date': formatted_date, 'Time': formatted_time, 'Tweet': tweet_txt, 'Favourites': no_favourites, 'Retweets': tweet['retweet_count'], 'Url': url}, ignore_index=True)
 
     df.sort_values(by=['Favourites'], ascending=False, ignore_index=True, inplace=True)
 
     return df
 
 
-#api = getAPI()
-#tweets = getTweets(no_fetches=8)
-#saveTweets(tweets)
+api = getAPI()
+tweets = getTweets(no_fetches=8)
+saveTweets(tweets)
 
-tweets = loadTweets()
-pprint.pprint(tweets[0])
+#tweets = loadTweets()
 
 df = createDataFrame(tweets)
-print(df.head(10))
+print(df.head(20))
