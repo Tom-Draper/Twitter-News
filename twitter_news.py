@@ -1,5 +1,5 @@
 import twitter
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 import json
 import pandas as pd
@@ -32,13 +32,15 @@ def getAPI():
                       access_token_secret=access_token_secret)
     return api
 
-def getTweets(account='BBCNews', count=200):
+def getTweets(account='BBCNews', count=200, no_fetches=1):
+    old_id = 0
     tweets = []
-    fetches = 1
-    for i in range(fetches):
-        t = api.GetUserTimeline(screen_name=account, since_id=old_id, count=count, include_rts=1)
+    for i in range(no_fetches):
+        t = api.GetUserTimeline(screen_name=account, max_id=old_id, count=count, include_rts=1)
         new_tweets = [i.AsDict() for i in t]
+        old_id = new_tweets[-1]['id']
         tweets += new_tweets
+    print(len(tweets), "tweets")
     return tweets
 
 def saveTweets(tweets_list):
@@ -79,7 +81,6 @@ def createDataFrame(tweets):
     df = pd.DataFrame()
 
     for i, tweet in enumerate(tweets):
-        
         # Create datetime object
         date = datetime.strptime(tweet['created_at'], "%a %b %d %X %z %Y")
         formatted_date = date.strftime("%d-%m-%Y")
@@ -88,20 +89,23 @@ def createDataFrame(tweets):
         no_favourites = getFavourites(tweet)
         url = getUrl(tweet)
         tweet_txt = formatTweetText(tweet['text'])
-    
-        df = df.append({'Date': formatted_date, 'Time': formatted_time, 'Tweet': tweet_txt, 'Favourites': no_favourites, 'Retweets': tweet['retweet_count'], 'Url': url}, ignore_index=True)
+        
+        # Filter tweets older than a week
+        week_ago = datetime.now() - timedelta(days=7)
+        if date.replace(tzinfo=None) > week_ago:
+            df = df.append({'Account': tweet['user']['name'], 'Date': formatted_date, 'Time': formatted_time, 'Tweet': tweet_txt, 'Favourites': no_favourites, 'Retweets': tweet['retweet_count'], 'Url': url}, ignore_index=True)
 
     df.sort_values(by=['Favourites'], ascending=False, ignore_index=True, inplace=True)
 
     return df
 
 
-api = getAPI()
-tweets = getTweets(count=500)
-saveTweets(tweets)
+#api = getAPI()
+#tweets = getTweets(no_fetches=8)
+#saveTweets(tweets)
 
 tweets = loadTweets()
-print(len(tweets))
+pprint.pprint(tweets[0])
 
 df = createDataFrame(tweets)
-print(df)
+print(df.head(10))
