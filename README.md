@@ -8,7 +8,7 @@ An emailing system that sends emails containing the top most favourited tweets/r
 - API key
 - API key secret
 - access token
-- access token secret
+- access token secret     
 into the appropriate places in the api_details.json file.
 2. Enter your sending Gmail account details into the appropriate places in the email_details.json file.
 3. Enter the emails of your mailing list into the appropriate place in the email_details.json file. 
