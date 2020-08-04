@@ -5,6 +5,7 @@ import json
 import pandas as pd
 import pprint
 import pickle
+from send_emails import EmailSender
 
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
@@ -12,107 +13,141 @@ pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
 
 
-def getAPI():
-    # Read your twitter api details
-    with open('api_details.json', 'r') as f:
-        data = f.read()
-    # Parse file
-    obj = json.loads(data)
+class TwitterNews:
+    def __init__(self):
+        self.api = self.getAPI()
+    
+    def getAPI(self):
+        # Read your twitter api details
+        with open('api_details.json', 'r') as f:
+            data = f.read()
+        # Parse file
+        obj = json.loads(data)
 
-    api_key = obj['api-key']
-    api_key_secret = obj['api-key-secret']
-    access_token = obj['access-token']
-    access_token_secret = obj["access-token-secret"]
+        api_key = obj['api-key']
+        api_key_secret = obj['api-key-secret']
+        access_token = obj['access-token']
+        access_token_secret = obj["access-token-secret"]
 
-    api = twitter.Api(consumer_key=api_key,
-                      consumer_secret=api_key_secret,
-                      access_token_key=access_token,
-                      access_token_secret=access_token_secret)
-    return api
+        api = twitter.Api(consumer_key=api_key,
+                          consumer_secret=api_key_secret,
+                          access_token_key=access_token,
+                          access_token_secret=access_token_secret)
+        return api
 
-def getTweets(account='BBCNews', count=200, no_fetches=1):
-    old_id = 0
-    tweets = []
-    for i in range(no_fetches):
-        t = api.GetUserTimeline(screen_name=account, max_id=old_id, count=count, include_rts=1)
-        new_tweets = [i.AsDict() for i in t]
-        old_id = new_tweets[-1]['id']
-        tweets += new_tweets
-    if len(tweets) != count*no_fetches:
-        print("Error:", len(tweets), "tweets")
-    return tweets
+    def getTweets(self, account='BBCNews', count=200, no_fetches=1):
+        old_id = 0
+        tweets = []
+        for i in range(no_fetches):
+            t = self.api.GetUserTimeline(screen_name=account, max_id=old_id, count=count, include_rts=1)
+            new_tweets = [i.AsDict() for i in t]
+            old_id = new_tweets[-1]['id']
+            tweets += new_tweets
+        if len(tweets) != count*no_fetches:
+            print("Error:", len(tweets), "tweets")
+        return tweets
 
-def saveTweets(tweets_list):
-    with open('tweets.pickle', 'wb') as f:
-        pickle.dump(tweets_list, f)
+    def saveTweets(self, tweets_list):
+        with open('tweets.pickle', 'wb') as f:
+            pickle.dump(tweets_list, f)
 
-def loadTweets():
-    with open('tweets.pickle', 'rb') as f:
-        return pickle.load(f)
+    def loadTweets(self):
+        with open('tweets.pickle', 'rb') as f:
+            return pickle.load(f)
 
-def getFavourites(tweet):
-    if 'favorite_count' in tweet:
-        return int(tweet['favorite_count'])
-    elif 'retweeted_status' in tweet:
-        # Try retweeted tweet
-        return getFavourites(tweet['retweeted_status'])
-    else:
-        return None
+    def getFavourites(self, tweet):
+        if 'favorite_count' in tweet:
+            return tweet['favorite_count']
+        elif 'retweeted_status' in tweet:
+            # Try retweeted tweet
+            return self.getFavourites(tweet['retweeted_status'])
+        else:
+            return None
 
-def getAccountName(tweet):
-    """Get the account name of the original poster."""
-    if 'retweeted_status' in tweet:
-        return getAccountName(tweet['retweeted_status'])
-    elif 'user' in tweet:
-        return tweet['user']['name']
-    else:
-        return None
+    def getAccountName(self, tweet):
+        """Get the account name of the original poster."""
+        if 'retweeted_status' in tweet:
+            return self.getAccountName(tweet['retweeted_status'])
+        elif 'user' in tweet:
+            return tweet['user']['name']
+        else:
+            return None
 
-def getUrl(tweet):
-    if len(tweet['urls']) > 0:
-        return tweet['urls'][0]['url']
-    elif 'retweeted_status' in tweet:
-        # Try retweeted tweet
-        return getUrl(tweet['retweeted_status'])
-    else:
-        return None
+    def getUrl(self, tweet):
+        if len(tweet['urls']) > 0:
+            return tweet['urls'][0]['url']
+        elif 'retweeted_status' in tweet:
+            # Try retweeted tweet
+            return self.getUrl(tweet['retweeted_status'])
+        else:
+            return None
 
-def formatTweetText(tweet_txt):
-    result = tweet_txt
-    result = re.sub(r' https.*', '', result)
-    result = re.sub(r'\n.*', '', result)
-    result = re.sub(r'^RT @.*: ', '', result)
-    return result
+    def formatTweetText(self, tweet_txt):
+        result = tweet_txt
+        result = re.sub(r' https.*', '', result)
+        result = re.sub(r'\n.*', '', result)
+        result = re.sub(r'^RT @.*: ', '', result)
+        return result
 
-def createDataFrame(tweets):
-    df = pd.DataFrame()
+    def createDataFrame(self, tweets):
+        df = pd.DataFrame()
 
-    for tweet in tweets:
-        # Create datetime object
-        date = datetime.strptime(tweet['created_at'], "%a %b %d %X %z %Y")
-        formatted_date = date.strftime("%d-%m-%Y")
-        formatted_time = date.strftime("%X")
+        for tweet in tweets:
+            # Create datetime object
+            date = datetime.strptime(tweet['created_at'], "%a %b %d %X %z %Y")
+            formatted_date = date.strftime("%d/%m/%Y")
+            formatted_time = date.strftime("%X")
+            
+            account_name = self.getAccountName(tweet)
+            no_favourites = self.getFavourites(tweet)
+            url = self.getUrl(tweet)
+            tweet_txt = self.formatTweetText(tweet['text'])
+            
+            # Filter tweets older than a week
+            week_ago = datetime.now() - timedelta(days=7)
+            if date.replace(tzinfo=None) > week_ago:
+                df = df.append({'Account': account_name, 'Date': formatted_date, 'Time': formatted_time, 'Tweet': tweet_txt, 'Favourites': no_favourites, 'Retweets': tweet['retweet_count'], 'Url': url}, ignore_index=True)
+
+        # Sort by descending number of likes
+        df.sort_values(by=['Favourites'], ascending=False, ignore_index=True, inplace=True)
+
+        return df
+
+    def createEmailBody(self, df):
+        now = datetime.now().strftime("%d/%m/%y")
+        week_ago = (datetime.now() - timedelta(days=7)).strftime("%d/%m/%y")
         
-        account_name = getAccountName(tweet)
-        no_favourites = getFavourites(tweet)
-        url = getUrl(tweet)
-        tweet_txt = formatTweetText(tweet['text'])
+        # Build email body text
+        text = f'Weekly News: {week_ago} - {now}\n'
+        text += "-"*len(text) + "\n\n"
+        for row in df.itertuples():
+            news_article = f"{row.Account} -- {str(row.Date)} at {str(row.Time)}\n"
+            news_article += f"{row.Tweet}" + '\n'
+            news_article += f"Favourites: {int(row.Favourites)}  Retweets: {int(row.Retweets)}\n"
+            news_article += str(row.Url)
+            text += news_article + '\n\n'
+        text += "Brought to you by Tom Draper :)\n"
         
-        # Filter tweets older than a week
-        week_ago = datetime.now() - timedelta(days=7)
-        if date.replace(tzinfo=None) > week_ago:
-            df = df.append({'Account': account_name, 'Date': formatted_date, 'Time': formatted_time, 'Tweet': tweet_txt, 'Favourites': no_favourites, 'Retweets': tweet['retweet_count'], 'Url': url}, ignore_index=True)
+        return text
 
-    df.sort_values(by=['Favourites'], ascending=False, ignore_index=True, inplace=True)
+    def main(self, no_tweets=10):
+        # Get tweets
+        tweets = self.getTweets(no_fetches=6)
+        self.saveTweets(tweets)
+        #tweets = loadTweets()
+        
+        # Make dataframe
+        df = self.createDataFrame(tweets)
+        print(df.head(no_tweets))
+        
+        # Send emails
+        email_body = self.createEmailBody(df.head(no_tweets))
+        print("\nEmail will look as follows:\n")
+        print(email_body)
+        sender = EmailSender()
+        sender.sendEmails("Weekly News", body=email_body)
 
-    return df
 
-
-api = getAPI()
-tweets = getTweets(no_fetches=8)
-saveTweets(tweets)
-
-#tweets = loadTweets()
-
-df = createDataFrame(tweets)
-print(df.head(20))
+if __name__ == "__main__":
+    tn = TwitterNews()
+    tn.main()
