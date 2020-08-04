@@ -1,0 +1,11 @@
+{
+    "sender": {
+        "email": "[YOUR EMAIL]",
+        "password": "[YOUR PASSWORD]"
+    },
+    "mail-list": [
+        "[EMAIL 1]",
+        "[EMAIL 2]",
+        "[EMAIL 3]"
+    ]
+}

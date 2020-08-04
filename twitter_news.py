@@ -12,11 +12,9 @@ pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
 
 
-
-
 def getAPI():
     # Read your twitter api details
-    with open('my_api_details.json', 'r') as f:
+    with open('api_details.json', 'r') as f:
         data = f.read()
     # Parse file
     obj = json.loads(data)
