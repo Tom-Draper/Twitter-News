@@ -1,6 +1,6 @@
 # Twitter-News
 
-An emailing system that sends emails containing the top most favourited tweets/retweets from a news media Twitter account to a mailing list.
+An emailing system that sends the top most favourited tweets and retweets from a news media Twitter account over the past week to a mailing list. The default account is the BBCNews Twitter account.
 
 ## Getting Started
 ### Setup
