@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 import re
 import json
 import pandas as pd
-import pprint
 import pickle
 from send_emails import EmailSender
 
@@ -112,40 +111,61 @@ class TwitterNews:
         df.sort_values(by=['Favourites'], ascending=False, ignore_index=True, inplace=True)
 
         return df
-
-    def createEmailBody(self, df):
+    
+    def createEmailBodyPlain(self, df):
         now = datetime.now().strftime("%d/%m/%y")
         week_ago = (datetime.now() - timedelta(days=7)).strftime("%d/%m/%y")
         
         # Build email body text
         text = f'Weekly News: {week_ago} - {now}\n'
-        text += "-"*len(text) + "\n\n"
+        text += "-"*len(text)*1.5 + "\n\n"
         for row in df.itertuples():
-            news_article = f"{row.Account} -- {str(row.Date)} at {str(row.Time)}\n"
-            news_article += f"{row.Tweet}" + '\n'
-            news_article += f"Favourites: {int(row.Favourites)}  Retweets: {int(row.Retweets)}\n"
-            news_article += str(row.Url)
+            account_and_time = f"{row.Account} -- {str(row.Date)} at {str(row.Time)}"
+            tweet_text = f"{row.Tweet}"
+            fav_and_retweets = f"Favourites: {int(row.Favourites)}  Retweets: {int(row.Retweets)}"
+            url = str(row.Url)
+            
+            article = account_and_time + '\n' + tweet_text + '\n' \
+                                       + fav_and_retweets + '\n' + url
             text += news_article + '\n\n'
-        text += "Brought to you by Tom Draper :)\n"
+        
+        return text
+
+    def createEmailBodyHTML(self, df):
+        now = datetime.now().strftime("%d/%m/%y")
+        week_ago = (datetime.now() - timedelta(days=7)).strftime("%d/%m/%y")
+        
+        # Build email body text
+        text = f'<h3><u>Weekly News: {week_ago} - {now}</u></h3>'
+        for row in df.itertuples():
+            account_and_time = f"{row.Account} -- {str(row.Date)} at {str(row.Time)}"
+            tweet_text = f"{row.Tweet}"
+            fav_and_retweets = f"Favourites: {int(row.Favourites)} &ensp; Retweets: {int(row.Retweets)}"
+            url = str(row.Url)
+            
+            news_article = account_and_time + '<br>' + '<b>' + tweet_text + '</b>' \
+                           + '<br>' + fav_and_retweets + '<br>' + url
+            text += news_article + '<br><br>'
         
         return text
 
     def main(self, no_tweets=10):
         # Get tweets
+        print("Fetching tweets...")
         tweets = self.getTweets(no_fetches=6)
         self.saveTweets(tweets)
         #tweets = loadTweets()
         
-        # Make dataframe
+        # Make sorted dataframe of top tweets
         df = self.createDataFrame(tweets)
         print(df.head(no_tweets))
         
         # Send emails
-        email_body = self.createEmailBody(df.head(no_tweets))
-        print("\nEmail will look as follows:\n")
-        print(email_body)
+        email_body = self.createEmailBodyHTML(df.head(no_tweets))
+        print("\nEmail body will be as follows:\n")
+        print(email_body.replace('<br>', '\n'))
         sender = EmailSender()
-        sender.sendEmails("Weekly News", body=email_body)
+        sender.sendEmails("Weekly News", body=email_body, body_type='html')
 
 
 if __name__ == "__main__":

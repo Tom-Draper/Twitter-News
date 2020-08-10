@@ -22,7 +22,7 @@ class EmailSender:
         sender = obj['sender']
         return sender['email'], sender['password'], obj['mail-list']
 
-    def sendEmails(self, subject, body):
+    def sendEmails(self, subject, body, body_type):
         sender_email, sender_password, email_list = self._emailDetails()
         smtpObj = self._login(sender_email, sender_password)
         
@@ -30,11 +30,12 @@ class EmailSender:
         message = MIMEMultipart('alternative')
         message['From'] = sender_email
         message['Subject'] = subject
-        message.attach(MIMEText(body, 'plain'))
+        # body_type either 'html' or 'plain'
+        message.attach(MIMEText(body, body_type))
                 
         # Send out reminder emails.
         for i, reciever_email in enumerate(email_list):
-            print(f"[{i}/{len(email_list)-1}] Sending email to {reciever_email}...")
+            print(f"[{i+1}/{len(email_list)}] Sending email to {reciever_email}...")
             
             # Switch email sending to
             message['To'] = reciever_email
