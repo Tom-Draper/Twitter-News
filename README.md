@@ -3,7 +3,7 @@
 An emailing system that sends the top most favourited tweets and retweets from a news media Twitter account over the past week to a mailing list. The default account is the BBCNews Twitter account.
 
 ## Getting Started
-### Setup
+### Set up and Config
 1. Enter the following into the appropriate places in the api_details.json file from your Twitter API access:
 - API key;
 - API key secret;
@@ -22,5 +22,5 @@ py -m pip install:
 - pandas
 - json
 
-### Sending
+### Sending Emails
 Run the twitter_news.py file to send the top news tweets from the past week to each email listed in the mailing list inside the email_details.json file.
