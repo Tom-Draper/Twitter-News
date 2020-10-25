@@ -1,0 +1,10 @@
+
+__pycache__/email.cpython-38.pyc
+__pycache__/send_emails.cpython-38.pyc
+personal/__pycache__/my_send_emails.cpython-38.pyc
+personal/my_api_details.json
+personal/my_email_details.json
+personal/my_send_emails.py
+personal/my_twitter_news.py
+personal/tweets.pickle
+*.pickle

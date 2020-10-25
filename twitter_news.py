@@ -101,11 +101,15 @@ class TwitterNews:
             no_favourites = self.getFavourites(tweet)
             url = self.getUrl(tweet)
             tweet_txt = self.formatTweetText(tweet['text'])
+            if 'retweet_count' in tweet.keys():
+                retweets = tweet['retweet_count']
+            else:
+                retweets = 0
             
             # Filter tweets older than a week
             week_ago = datetime.now() - timedelta(days=7)
             if date.replace(tzinfo=None) > week_ago:
-                df = df.append({'Account': account_name, 'Date': formatted_date, 'Time': formatted_time, 'Tweet': tweet_txt, 'Favourites': no_favourites, 'Retweets': tweet['retweet_count'], 'Url': url}, ignore_index=True)
+                df = df.append({'Account': account_name, 'Date': formatted_date, 'Time': formatted_time, 'Tweet': tweet_txt, 'Favourites': no_favourites, 'Retweets': retweets, 'Url': url}, ignore_index=True)
 
         # Sort by descending number of likes
         df.sort_values(by=['Favourites'], ascending=False, ignore_index=True, inplace=True)
@@ -125,7 +129,7 @@ class TwitterNews:
             fav_and_retweets = f"Favourites: {int(row.Favourites)}  Retweets: {int(row.Retweets)}"
             url = str(row.Url)
             
-            article = account_and_time + '\n' + tweet_text + '\n' \
+            news_article = account_and_time + '\n' + tweet_text + '\n' \
                                        + fav_and_retweets + '\n' + url
             text += news_article + '\n\n'
         
